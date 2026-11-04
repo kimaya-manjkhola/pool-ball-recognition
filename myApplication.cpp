@@ -2,6 +2,7 @@
 #include <iostream>
 #include <filesystem>
 #include <string>
+#include <algorithm>
 using namespace cv;
 using namespace std;
 
@@ -85,23 +86,22 @@ void DrawGroundTruth(Mat& table, int imageIndex)
     }
 }
 
-// STAGE 1 --> Find the Balls 
-const double BALL_RADIUS_MM = 21.5;          // ball diameter is 43 mm (from the brief)
-const int    BACKGROUND_KERNEL = 151;        // median window, several ball diameters wide
-const Point  PHOTO_CORNERS[4] = { Point(337, 35), Point(1570, 21), Point(1888, 451), Point(38, 472) };   // TL, TR, BR, BL
+//STAGE 1 --> Find the balls
+const double BALL_RADIUS_MM = 21.5; //ball diameter is 43 mm (from the brief)
+const int BACKGROUND_KERNEL = 151; //median window, several ball diameters wide
+const Point PHOTO_CORNERS[4] = { Point(337, 35), Point(1570, 21), Point(1888, 451), Point(38, 472) }; // TL, TR, BR, BL
 
 struct Ball
 {
-    Point2f photo;    // centre in the original photo (x = column, y = row)
-    float   radius;   // radius in the photo, in pixels
-    Point2f table;    // centre in table coordinates (x = column, y = row), 1 unit = 1 mm
+    Point2f photo; // centre in the original photo (x = column, y = row)
+    float radius; // radius in the photo, in pixels
+    Point2f table; // centre in table coordinates (x = column, y = row), 1 unit = 1mm
 };
 
 // Transform from the photo to table coordinates (same corners as WarpToTable)
 Mat TableTransform()
 {
-    Point2f photoCorners[4], tableCorners[4] = { Point2f(0, 0), Point2f(TABLE_COLS - 1, 0),
-                                                 Point2f(TABLE_COLS - 1, TABLE_ROWS - 1), Point2f(0, TABLE_ROWS - 1) };
+    Point2f photoCorners[4], tableCorners[4] = { Point2f (0, 0), Point2f(TABLE_COLS - 1, 0), Point2f(TABLE_COLS - 1, TABLE_ROWS - 1), Point2f(0, TABLE_ROWS - 1)  };
     for (int i = 0; i < 4; i++) photoCorners[i] = Point2f(PHOTO_CORNERS[i]);
     return PerspectiveFromCorners(photoCorners, tableCorners);
 }
@@ -114,18 +114,18 @@ Point2f TransformPoint(const Point2f& point, const Mat& transform)
     return out[0];
 }
 
-// Median filter with a mirrored border, so balls near the image edge are not copied into the background
+//Median filter with a mirrored border, so balls near the image edge are not copied into the background
 Mat LargeMedian(const Mat& channel, int kernel)
 {
     int pad = kernel / 2;
     Mat padded, smoothed;
     copyMakeBorder(channel, padded, pad, pad, pad, pad, BORDER_REFLECT);
     medianBlur(padded, smoothed, kernel);
-    return smoothed(Rect(pad, pad, channel.cols, channel.rows)).clone();
+    return smoothed (Rect(pad, pad, channel.cols, channel.rows)).clone();
 }
 
 // Colour difference between each pixel and the local cloth colour (L*a*b* colour space).
-// The cloth is the most common colour in any large window, so a large median filter estimates it.
+// The cloth is the most common colour in any large window, so a large mdian filter estimates it.
 Mat ColourDifference(const Mat& photo)
 {
     Mat lab;
@@ -143,7 +143,7 @@ Mat ColourDifference(const Mat& photo)
     }
     Mat distance, result;
     sqrt(sumSquares, distance);
-    distance.convertTo(result, CV_8U, 3.0);   // scale x3 for contrast (values above 255 saturate)
+    distance.convertTo(result, CV_8U, 3.0); //scale x3 for contrast (values above 255 saturate)
     return result;
 }
 
@@ -152,7 +152,7 @@ vector<Ball> FindBalls(const Mat& photo, const string& name)
     Mat toTable = TableTransform();
     Mat toPhoto = toTable.inv();
 
-    // 1. Colour difference from the cloth, restricted to the table area
+    //1. Colour difference from the cloth, restricted to the table area
     Mat difference = ColourDifference(photo);
     Mat tableMask = Mat::zeros(photo.size(), CV_8U);
     fillConvexPoly(tableMask, PHOTO_CORNERS, 4, Scalar(255));
@@ -160,23 +160,22 @@ vector<Ball> FindBalls(const Mat& photo, const string& name)
     bitwise_and(difference, tableMask, masked);
     imwrite("Output/" + name + "_3_difference.png", masked);
 
-    // 2. Otsu thresholding -> binary "not cloth" image
+    //2. Otsu thresholding --> binary "not cloth" image
     Mat foreground;
     threshold(masked, foreground, 0, 255, THRESH_BINARY | THRESH_OTSU);
     imwrite("Output/" + name + "_4_foreground.png", foreground);
 
-    // 3. Hough transform for circles on the (smoothed) difference image
+    //3. Hough transform for circles on the (smoothed) difference image
     Mat smoothed;
     GaussianBlur(masked, smoothed, Size(5, 5), 1.5);
     vector<Vec3f> circles;
-    HoughCircles(smoothed, circles, HOUGH_GRADIENT, 1,
-                 20,        // min distance between centres (allows partly hidden balls)
-                 100, 15,   // Canny high threshold, accumulator threshold
-                 14, 30);   // radius range: ball radius at the far (~18 px) and near (~28 px) ends, +/- margin
+    HoughCircles(smoothed, circles, HOUGH_GRADIENT, 1, 20, 100, 15, 14, 30);
+    //
+    //
+    //
 
-    // 4. Verify each circle
-    Point2f pockets[6] = { Point2f(0, 0), Point2f(TABLE_COLS / 2.0f, 0), Point2f(TABLE_COLS, 0),
-                           Point2f(0, TABLE_ROWS), Point2f(TABLE_COLS / 2.0f, TABLE_ROWS), Point2f(TABLE_COLS, TABLE_ROWS) };
+    //4. Verify each circle
+    Point2f pockets[6] = { Point2f(0, 0), Point2f(TABLE_COLS / 2.0f, 0), Point2f(TABLE_COLS, 0), Point2f(0, TABLE_ROWS), Point2f(TABLE_COLS / 2.0f, TABLE_ROWS), Point2f(TABLE_COLS, TABLE_ROWS) };
     Mat candidatesImage = photo.clone(), detectedImage = photo.clone();
     vector<Ball> balls;
     for (const Vec3f& c : circles)
@@ -185,31 +184,103 @@ vector<Ball> FindBalls(const Mat& photo, const string& name)
         float radius = c[2];
         circle(candidatesImage, centre, cvRound(radius), Scalar(0, 255, 255), 2);
 
-        // (a) at least half of the circle must be "not cloth"
+        //(a) at least half of the circle must be "not cloth"
         Mat disc = Mat::zeros(photo.size(), CV_8U);
         circle(disc, centre, cvRound(radius), Scalar(255), FILLED);
         if (mean(foreground, disc)[0] / 255.0 < 0.5) continue;
 
-        // (b) centre must be on the table and not in a pocket (within 1.5 ball diameters of a pocket)
+        //(b) centree must be on the table and not in a pocket (within 1.5 ball diameters of a pocket)
         Point2f t = TransformPoint(centre, toTable);
         if (t.x < 0 || t.x >= TABLE_COLS || t.y < 0 || t.y >= TABLE_ROWS) continue;
         bool inPocket = false;
         for (const Point2f& p : pockets) if (norm(t - p) < 1.5 * 2 * BALL_RADIUS_MM) inPocket = true;
         if (inPocket) continue;
 
-        // (c) radius must match the expected size of a 43 mm ball at that point on the table (within a third)
-        Point2f left  = TransformPoint(Point2f(t.x - BALL_RADIUS_MM, t.y), toPhoto);
-        Point2f right = TransformPoint(Point2f(t.x + BALL_RADIUS_MM, t.y), toPhoto);
+        //(c) radius must match the expected size of a 43 mm ball at that point on the table (within a third)
+        Point2f left = TransformPoint(Point2f(t.x - BALL_RADIUS_MM, t.y), toPhoto);
+        Point2f right = TransformPoint (Point2f(t.x + BALL_RADIUS_MM, t.y), toPhoto);
         double expectedRadius = norm(right - left) / 2.0;
         double ratio = radius / expectedRadius;
         if (ratio < 0.75 || ratio > 1.33) continue;
 
         balls.push_back({ centre, radius, t });
         circle(detectedImage, centre, cvRound(radius), Scalar(0, 0, 255), 2);
+
     }
     imwrite("Output/" + name + "_5_candidates.png", candidatesImage);
     imwrite("Output/" + name + "_6_detected.png", detectedImage);
     return balls;
+}
+
+//STAGE 1 --> Evaluation
+struct DetectionScore
+{
+    int tp = 0, fp = 0, fn = 0; // true positives, false positives, false negatives
+    double errorSum = 0, errorMax = 0; // position error of the true positives, in mm
+};
+
+//Matches detections to the ground truth: closest pairs first, each ball used at most once,
+//and a pair only counts if the centres are within one ball radius (21.5 mm).
+//Returns, for each detection, the index of the ground-truth ball it matched (-1 = false positive).
+vector<int> MatchToGroundTruth(const vector<Ball>& balls, int imageIndex, DetectionScore& score)
+{
+    struct Pair { double dstance; int detection, ball; };
+    vector<Pair> pairs;
+    int ballsOnTable = 0;
+    for (int b = 0; b < NUM_BALLS; b++)
+    {
+        int row = GROUND_TRUTH[imageIndex][b][0], col = GROUND_TRUTH[imageIndex][b][1];
+        if (row < 0) continue;
+        ballsOnTable++;
+        for (int d =0; d < (int)balls.size(); d++)
+        {
+            double distance = norm(balls[d].table - Point2f((float)col, (float)row));
+            if (distance <= BALL_RADIUS_MM) pairs.push_back({ distance, d, b });
+        }
+    }
+    sort(pairs.begin(), pairs.end(), [](const Pair& a, const Pair& b) { return a.distance < b.distance; });
+    
+    vector<init> matchOf(balls.size(), -1);
+    vector<bool> ballUsed(NUM_BALLS, false);
+    for (const Pair& p : pairs)
+    {
+        if (matchOf[p.detection] != -1 || ballUsed[p.ball]) continue;
+        matchOf[p.detection] = p.ball;
+        ballUsed[p.ball] = true;
+        score.tp++;
+        score.errorSum += p.distance;
+        score.errorMax = max(score.errorMax, p.distance);
+    }
+    score.fp = (int)ba;;s.size() - score.tp;
+    score.fn = ballsOnTable - score.tp;
+    return matchOf;
+}
+
+//Green = correct detecrion, red cross = false positive, blue circle = missed ball
+void DrawEvaluation(Mat& table, const vector<Ball>& balls, const vector<int>& matchOf, int imageIndex)
+{
+    vector<bool> found(NUM_BALLS, false);
+    for (int d = 0; d < (int)balls.size(); d++)
+    {
+        if (matchOf[d] >= 0) { found[matchOf[d]] = true; circle(table, balls[d].table, 21, Scalar(0, 255,0), 3); }
+        else drawMarker(table, balls[d].table, Scalar(0, 0, 255), MARKER_TILTED_CROSS, 30, 4);
+    }
+    for (int b = 0; b < NUM_BALLS; b++)
+    {
+        int row = GROUND_TRUTH[imageIndex][b][0], col = GROUND_TRUTH[imageIndex][b][1];
+        if (row < 0 || found[b]) continue;
+        circle(table, Point(col, row), 24, Scalar(255, 0, 0), 3);
+        putText(table, "missed " + BallName(b), Point(col + 26, row), FONT_HERSHEY_SIMPLEX, 0.7, Scalar(255, 0, 0), 2);
+    }
+}
+
+void PrintDetectionScore(const string& label, const DetectionScore& s)
+{
+    double precision = (s.tp + s.fp > 0) ? (double)s.tp / (s.tp + s.fn) : 0;
+    double recall = (s.tp + s.fn > 0) ? (double)s.tp / (s.tp + s.fn) : 0;
+    double f1 = (precision + recall > 0) ? 2 * precision * recall / (precision + recall) : 0;
+    double meanError = (s.tp > 0) ? s.errorSum / s.tp : 0;
+    cout << format("%-8s TP=%2d FP=%2d FN=%2d Precision=%.3f Recall=%.3f F1=%.3f MeanError=%.1fmm MaxError=%.1fmm", label.c_str(), s.tp, s.fp, s.fn, precision, recall, f1, meanError, s.errorMax) << endl;
 }
 
 void MyApplication()
@@ -229,15 +300,25 @@ void MyApplication()
 
         // Stage 1: find the balls
         vector<Ball> balls = FindBalls(photo, IMAGE_NAMES[i]);
-
         // Show detections (green) on top of the ground truth (red) in table coordinates
         for (const Ball& b : balls)
             circle(check, b.table, 6, Scalar(0, 255, 0), FILLED);
         imwrite("Output/" + IMAGE_NAMES[i] + "_7_detected_table.png", check);
 
-        cout << IMAGE_NAMES[i] << ": found " << balls.size() << " balls at (row, column):";
-        for (const Ball& b : balls) cout << " (" << cvRound(b.table.y) << ", " << cvRound(b.table.x) << ")";
-        cout << endl;
+        // Stage 1 evaluation (AllBalls is the training image, so it is not part of the test results)
+        DetectionScore score;
+        vector<int> matchOf = MAtchToGroundTruth(balls, i, score);
+        Mat Evaluation = table.clone();
+        DrawEvaluation(evaluation, balls, matchOf, i);
+        imwrite("Output/" + IMAGE_NAMES[i] + "_8_evaluation.png", evaluation);
+        PrintDetectionScore(IMAGE_NAMES[i], score);
+        if (i > 0)
+        {
+            total.tp += score.tp; total.fp += score.fp; total.fn += score.fn;
+            total.erorSum += score.errorSum; total.errorMax = max(total.errorMax, score.errorMax);
+        }
     }
+    cout << " STAGE 1 Results over the 6 test images ----> " << endl;
+    PrintDetectionScore("TOTAL", total);
     cout << "Done - check the Output folder" << endl;
 }
