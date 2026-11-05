@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.10)
+project(PoolBalls)
+set(CMAKE_CXX_STANDARD 17)
+find_package(OpenCV REQUIRED)
+add_executable(PoolBalls main.cpp myApplication.cpp)
+target_include_directories(PoolBalls PRIVATE ${OpenCV_INCLUDE_DIRS})
+target_link_libraries(PoolBalls ${OpenCV_LIBS})
