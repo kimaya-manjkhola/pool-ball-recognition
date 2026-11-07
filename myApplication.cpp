@@ -387,7 +387,7 @@ void PrintConfusionMatrix(const int confusion[NUM_BALLS][NUM_BALLS])
 //The colour models are still the ones trained on the original AllBalls.jpeg
 void RobustnessTest(const vector<Mat>& models)
 {
-    double gains[5] = { 0.5, 0.75, .0, 1.25, 1.5 };
+    double gains[5] = { 0.5, 0.75, 1.0, 1.25, 1.5 };
     cout << " Robustness to Lighting (brightness gain applied to the test images) " << endl;
     for (double gain : gains)
     {
