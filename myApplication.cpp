@@ -381,6 +381,40 @@ void PrintConfusionMatrix(const int confusion[NUM_BALLS][NUM_BALLS])
     }
 }
 
+//ROBUSTNESS Test -- Lighting Changes
+//Re-runs detection and recognition on darker/brighter copies of the 6 test images
+//(every pixel value v becomes gain * v, clipped to 0..255)
+//The colour models are still the ones trained on the original AllBalls.jpeg
+void RobustnessTest(const vector<Mat>& models)
+{
+    double gains[5] = { 0.5, 0.75, .0, 1.25, 1.5 };
+    cout << " Robustness to Lighting (brightness gain applied to the test images) " << endl;
+    for (double gain : gains)
+    {
+        DetectionScore total;
+        int correct = 0, located = 0;
+        for (int i = 1; i < NUM_IMAGES; i++)
+        {
+            Mat photo = imread("Media/" + IMAGE_NAMES[i] + ".jpeg"), adjusted;
+            photo.convertTo(adjusted, -1, gain, 0);
+            vector<Ball> balls = FindBalls(adjusted, format("gain%.2f_", gain) + IMAGE_NAMES[i]);
+            DetectionScore score;
+            vector<int> matchOf = MatchToGroundTruth(balls, i, score);
+            vector<int> labelOf = RecogniseBalls(adjusted, balls, models);
+            total.tp += score.tp; total.fp += score.fp; total.fn += score.fn;
+            total.errorSum += score.errorSum; total.errorMax = max(total.errorMax, score.errorMax);
+            for (int d = 0; d < (int)balls.size(); d++)
+            {
+                if (matchOf[d] < 0) continue;
+                located++;
+                if (labelOf[d] == matchOf[d]) correct++;
+            }
+        }
+        PrintDetectionScore(format("x%.2f", gain), total);
+        cout << format("   Recognition Accuracy = %d / %d = %.3f", correct, located, located > 0 ? (double)correct / located : 0.0) << endl;
+    }
+}
+
 void MyApplication()
 {
     filesystem::create_directories("Output");
@@ -444,5 +478,6 @@ void MyApplication()
     cout << format("Located AND recognised correctly (of all balls)    = %d / %d = %.3f",
                    recognisedCorrectly, ballsOnTables, (double)recognisedCorrectly / ballsOnTables) << endl;
     PrintConfusionMatrix(confusion);
+    RobustnessTest(models);
     cout << "Done - check the Output folder" << endl;
 }
