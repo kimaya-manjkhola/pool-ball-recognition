@@ -61,6 +61,8 @@ committed in 1f2b20e ("Stages 0-2 working...").
 
 ### Saturday 7 November 2026
 - Committed the snapshots and this README.
+- Added a lighting robustnes test: detection and cognition re-run on the test images 
+  with brightness scaled by 0.5, 0.75, 1.0, 1.25, and 1.5, models still trained on the original trained on the original AllBalls image. Detection stayed robust (F1 0.94 - 0.96) because the cloth model and the OTsu threshold adapt to each image. Recognition dropped to 53 - 62% at the extremes because the colour models include absolute brightness and come from one training image.
 
 ## Ground-truth corrections
 The assignment released an updated spreadsheet correcting 4 ball positions (Table1 white
