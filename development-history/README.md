@@ -1,6 +1,18 @@
 # Development history
-This folder documents how the project was developed before the GitHub repository
-existed (development started on 1 Nov 2026; the repository was created on 5 Nov 2026).
+This folder documents how the project was developed before the GitHub repository existed (development started on 1 Nov 2026; the repository was created on 5 Nov 2026).
+
+The `reconstructed-history` branch shows how the code developed from 1 to 4 November 2026, before this repository was created on 5 November. Each commit there is labelled [Reconstructed]:
+it was recorded on 9 Nov 2026, from the code as it was on the date below.
+
+| Commit | Written (author date) | Version |
+|---|---|---|
+| 193a3cc | 1 Nov 2026, 11:35 | Project setup: test program loads and displays Table1 |
+| 54a192b | 1 Nov 2026, 16:12 | Stage 0: perspective transform and ground-truth overlay |
+| 8b1937f | 2 Nov 2026, 15:21 | Stage 1: ball detection |
+| 7f197b2 | 4 Nov 2026, 19:06 | Stage 1 evaluation: first version (does not compile yet) |
+| 731c039 | 4 Nov 2026, 19:14 | Stage 1 evaluation: compile errors fixed |
+
+Development continues on `main` from commit 1f2b20e (Stage 2 recognition, 5 Nov 2026).
 
 ## Snapshots
 These are exact, unchanged copies of myApplication.cpp at two points during development.
