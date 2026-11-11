@@ -30,7 +30,7 @@ These are exact, unchanged copies of myApplication.cpp at two points during deve
 
 | File | Saved | State of the code |
 |---|---|---|
-| 2026-11-01_stage0_perspective_transform.cpp | 1 Nov 2026, ~16:12 | Stage 0 working: perspective transform to table coordinates and ground-truth overlay (with Table1 ground-truth corrections) |
+| 2026-11-01_stage0_perspective_transform.cpp | 1 Nov 2026 | Stage 0 working: perspective transform to table coordinates and ground-truth overlay (with Table1 ground-truth corrections) |
 | 2026-11-04_stage1_detection_and_evaluation_before_fixes.cpp | 4 Nov 2026| Stage 1 ball detection plus the first version of the evaluation code, before I fixed its compile errors |
 
 The final version (Stage 2 recognition added, 4-5 Nov) is myApplication.cpp,
