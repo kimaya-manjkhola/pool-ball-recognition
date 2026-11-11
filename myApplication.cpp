@@ -13,17 +13,12 @@ const int NUM_IMAGES = 7;
 const int NUM_BALLS = 16; // index 0..14 = balls 1..15, index 15 = white ball
 const string IMAGE_NAMES[NUM_IMAGES] = { "AllBalls", "Table1", "Table2","Table3", "Table4", "Table5", "Table6" };
 
-//Ground truth {rows, column} in the transformed table image. {-1,-1} = ball not on the table
-//Copied from Ball_Locations_In_Trnasformed_Image.xlsx.
-//CORRECTIONS (Table1): balls 2, 4 and 11 had row and column swapped in the spreadsheet
-//(rows > 683 are impossible). Ball 3 was listed at the same place as ball 7; its position
-//was estimated from the rack spacing.
-// AllBalls: balls 11-15 were labelled in the wrong order (checked against the numbers on the balls).
-// Table2: balls 4 and 5 had swapped positions.
+//Ground truth {row, column} in the transformed table image. {-1,-1} = ball not on the table
+//Taken from Ball_Locations_In_Transformed_Image_Second_correction.xlsx
 const int GROUND_TRUTH[NUM_IMAGES] [NUM_BALLS] [2] = {
-    { {253,908}, {250,959}, {255,1013}, {256,1072}, {254,1132}, {262,1184}, {256,1244}, {253,1307}, {329,901}, {330,961}, {335,1013}, {336,1067}, {334,1130}, {345,1187}, {342,1245}, {293,797} },  // AllBalls (corrected: 11-15 reordered)
-    { {309,1092}, {429,1212}, {381,1132}, {335,1050}, {285,1211}, {261,1170}, {352,1173}, {331,1132}, {240,1210}, {310,1170}, {407,1169}, {281,1135}, {374,1212}, {360,1091}, {331,1213}, {288,29} }, // Table1 (corrected)
-    { {282,1103}, {620,1224}, {391,1121}, {315,1046}, {310,1305}, {202,621}, {361,1173}, {331,1132}, {177,725}, {185,1269}, {665,798}, {296,438}, {53,1235}, {362,1090}, {399,1205}, {507,1169} },  // Table2 (corrected: 4 and 5 swapped)
+    { {253,908}, {250,959}, {255,1013}, {256,1072}, {254,1132}, {262,1184}, {256,1244}, {253,1307}, {329,901}, {330,961}, {335,1013}, {336,1067}, {334,1130}, {345,1187}, {342,1245}, {293,797} },  // AllBalls (labels 11-15 fixed in the second correction)
+    { {309,1092}, {429,1212}, {383,1131}, {335,1050}, {285,1211}, {261,1170}, {352,1173}, {331,1132}, {240,1210}, {310,1170}, {407,1169}, {281,1135}, {374,1212}, {360,1091}, {331,1213}, {288,29} }, // Table1 (balls 2, 3, 4, 11 fixed in the second correction)
+    { {282,1103}, {620,1224}, {391,1121}, {315,1046}, {310,1305}, {202,621}, {361,1173}, {331,1132}, {177,725}, {185,1269}, {665,798}, {296,438}, {53,1235}, {362,1090}, {399,1205}, {507,1169} },  // Table2 (balls 4 and 5 fixed in the second correction)
     { {23,908}, {616,1224}, {447,1199}, {336,29}, {305,1406}, {210,621}, {260,1294}, {226,1252}, {177,725}, {171,1270}, {665,798}, {249,351}, {53,1233}, {169,901}, {399,1201}, {434,29} }, // Table3
     { {23,908}, {546,1407}, {444,1204}, {-1,-1}, {305,1406}, {210,621}, {260,1294}, {226,1252}, {181,724}, {171,1270}, {665,798}, {249,351}, {58,1231}, {169,901}, {399,1201}, {88,1392} }, // Table4
     { {535,23}, {546,1407}, {444,1204}, {-1,-1}, {305,1406}, {131,25}, {260,1294}, {226,1252}, {538,72}, {171,1270}, {665,798}, {249,351}, {-1,-1}, {169,901}, {399,1201}, {608,26} }, // Table5
@@ -127,22 +122,28 @@ Mat LargeMedian(const Mat& channel, int kernel)
 }
 
 // Colour difference between each pixel and the local cloth colour (L*a*b* colour space).
-// The cloth is the most common colour in any large window, so a large mdian filter estimates it.
-Mat ColourDifference(const Mat& photo)
+// The cloth is the most common colour in any large window, so a large median filter estimates it.
+   Mat ColourDifference(const Mat& photo, const string& name)
 {
     Mat lab;
     cvtColor(photo, lab, COLOR_BGR2Lab);
     vector<Mat> channels;
     split(lab, channels);
     Mat sumSquares = Mat::zeros(photo.size(), CV_32F);
+    vector<Mat> backgroundChannels(3);
     for (int c = 0; c < 3; c++)
     {
         Mat value, background;
         channels[c].convertTo(value, CV_32F);
-        LargeMedian(channels[c], BACKGROUND_KERNEL).convertTo(background, CV_32F);
+        backgroundChannels[c] = LargeMedian(channels[c], BACKGROUND_KERNEL);
+        backgroundChannels[c].convertTo(background, CV_32F);
         Mat difference = value - background;
         sumSquares += difference.mul(difference);
     }
+    Mat backgroundLab, backgroundImage;
+    merge(backgroundChannels, backgroundLab);
+    cvtColor(backgroundLab, backgroundImage, COLOR_Lab2BGR);
+    imwrite("Output/" + name + "_3a_cloth_model.png", backgroundImage);
     Mat distance, result;
     sqrt(sumSquares, distance);
     distance.convertTo(result, CV_8U, 3.0); //scale x3 for contrast (values above 255 saturate)
@@ -155,7 +156,7 @@ vector<Ball> FindBalls(const Mat& photo, const string& name)
     Mat toPhoto = toTable.inv();
 
     //1. Colour difference from the cloth, restricted to the table area
-    Mat difference = ColourDifference(photo);
+    Mat difference = ColourDifference(photo, name);
     Mat tableMask = Mat::zeros(photo.size(), CV_8U);
     fillConvexPoly(tableMask, PHOTO_CORNERS, 4, Scalar(255));
     Mat masked;
@@ -172,9 +173,6 @@ vector<Ball> FindBalls(const Mat& photo, const string& name)
     GaussianBlur(masked, smoothed, Size(5, 5), 1.5);
     vector<Vec3f> circles;
     HoughCircles(smoothed, circles, HOUGH_GRADIENT, 1, 20, 100, 15, 14, 30);
-    //
-    //
-    //
 
     //4. Verify each circle
     Point2f pockets[6] = { Point2f(0, 0), Point2f(TABLE_COLS / 2.0f, 0), Point2f(TABLE_COLS, 0), Point2f(0, TABLE_ROWS), Point2f(TABLE_COLS / 2.0f, TABLE_ROWS), Point2f(TABLE_COLS, TABLE_ROWS) };
@@ -191,7 +189,7 @@ vector<Ball> FindBalls(const Mat& photo, const string& name)
         circle(disc, centre, cvRound(radius), Scalar(255), FILLED);
         if (mean(foreground, disc)[0] / 255.0 < 0.5) continue;
 
-        //(b) centree must be on the table and not in a pocket (within 1.5 ball diameters of a pocket)
+        //(b) centre must be on the table and not in a pocket (within 1.5 ball diameters of a pocket)
         Point2f t = TransformPoint(centre, toTable);
         if (t.x < 0 || t.x >= TABLE_COLS || t.y < 0 || t.y >= TABLE_ROWS) continue;
         bool inPocket = false;
@@ -258,7 +256,7 @@ vector<int> MatchToGroundTruth(const vector<Ball>& balls, int imageIndex, Detect
     return matchOf;
 }
 
-//Green = correct detecrion, red cross = false positive, blue circle = missed ball
+//Green = correct detection, red cross = false positive, blue circle = missed ball
 void DrawEvaluation(Mat& table, const vector<Ball>& balls, const vector<int>& matchOf, int imageIndex)
 {
     vector<bool> found(NUM_BALLS, false);
