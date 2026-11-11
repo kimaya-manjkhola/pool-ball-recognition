@@ -451,6 +451,14 @@ void EvaluateTestImages(const vector<Mat>& models, DetectionScore& total, int& c
     }
 }
 
+// Interesection over union of 2 circles of radius r whose centres are d apart 
+double CircleIoU(double d, double r)
+{
+    if (d >= 2 * r) return 0.0;
+    double overlap = 2 * r * r * acos(d / (2 * r)) - (d / 2) * sqrt(4 * r * r - d * d);
+    return overlap / (2 * CV_PI * r * r - overlap);
+}
+
 void RunComparisons()
 {
     saveImages = false;
@@ -460,7 +468,9 @@ void RunComparisons()
 
     // 1. Matching tolerance: one ball radius (21.5 mm) vs IoU = 0.5 for two 43 mm circles (11.4 mm)
     cout << "---- Comparison 1: matching tolerance ----" << endl;
-    double tolerances[2] = { 21.5, 11.4 };
+    double iouDistance = 0.0;
+    while (CircleIoU(iouDistance + 0.01, BALL_RADIUS_MM) >= 0.5) iouDistance += 0.01;   // largest distance with IoU >= 0.5
+    double tolerances[2] = { BALL_RADIUS_MM, iouDistance };
     for (double tolerance : tolerances)
     {
         matchTolerance = tolerance;
