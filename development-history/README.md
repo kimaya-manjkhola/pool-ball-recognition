@@ -88,20 +88,18 @@ committed in 1f2b20e ("Stages 0-2 working...").
   with brightness scaled by 0.5, 0.75, 1.0, 1.25, and 1.5, models still trained on the original trained on the original AllBalls image. Detection stayed robust (F1 0.94 - 0.96) because the cloth model and the OTsu threshold adapt to each image. Recognition dropped to 53 - 62% at the extremes because the colour models include absolute brightness and come from one training image.
 
 ## Ground-truth corrections
-The assignment released an updated spreadsheet correcting 4 ball positions (Table1 white
-ball; ball 2 in Tables 4, 5 and 6). This updated version was used throughout.
+The assignment released an updated spreadsheet correcting 4 ball positions (Table1 white ball; ball 2 in Tables 4, 5 and 6).
 
-While checking the ground truth against the images, I found further errors not covered
-by that update. Each was checked against the numbers visible on the balls:
+While checking the ground truth against the images, I found further errors, listed below. The lecturer later released a second corrected spreadsheet (Ball_Locations_In_Transformed_Image_Second_correction.xlsx) that fixes all of them. That second correction is the version used in the code.
 
-| Image | Ball(s) | Cells | Problem | Correction |
-|---|---|---|---|---|
-| Table1 | 2 | D4, E4 | Row value 1212 is impossible (table has 683 rows) | Swapped Row and Column: (429, 1212) |
-| Table1 | 4 | H4, I4 | Row value 1050 is impossible | Swapped: (335, 1050) |
-| Table1 | 11 | V4, W4 | Row value 1169 is impossible | Swapped: (407, 1169) |
-| Table1 | 3 | F4, G4 | Same position as ball 7 | Estimated from the rack spacing: (381, 1132) |
-| Table2 | 4 and 5 | H5-K5 | Positions of the two balls swapped | 4 = (315, 1046), 5 = (310, 1305) |
-| AllBalls | 11-15 | V3-AE3 | Labels in the wrong order | 11 = (335, 1013), 12 = (336, 1067), 13 = (334, 1130), 14 = (345, 1187), 15 = (342, 1245) |
+| Image | Ball(s) | Cells | Problem | How found | Correction |
+|---|---|---|---|---|---|
+| Table1 | 2 | D4, E4 | Row value 1212 is impossible (table has 683 rows) | Range check (row > 683) | Swapped Row and Column: (429, 1212) |
+| Table1 | 4 | H4, I4 | Row value 1050 is impossible | Range check (row > 683) | Swapped: (335, 1050) |
+| Table1 | 11 | V4, W4 | Row value 1169 is impossible | Range check (row > 683) | Swapped: (407, 1169) |
+| Table1 | 3 | F4, G4 | Same position as ball 7 | Duplicate position | My estimate from the rack spacing was (381, 1132); the lecturer's corrected value is (383, 1131) |
+| Table2 | 4 and 5 | H5-K5 | Positions of the two balls swapped | Numbers on the balls | 4 = (315, 1046), 5 = (310, 1305) |
+| AllBalls | 11-15 | V3-AE3 | Labels in the wrong order | Numbers on the balls | 11 = (335, 1013), 12 = (336, 1067), 13 = (334, 1130), 14 = (345, 1187), 15 = (342, 1245) |
 
 Effect on the results (6 test images):
 | | Spreadsheet as released | Corrected |
