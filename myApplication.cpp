@@ -156,7 +156,7 @@ Mat LargeMedian(const Mat& channel, int kernel)
     Mat backgroundLab, backgroundImage;
     merge(backgroundChannels, backgroundLab);
     cvtColor(backgroundLab, backgroundImage, COLOR_Lab2BGR);
-    imwrite("Output/" + name + "_3a_cloth_model.png", backgroundImage);
+    SaveImage("Output/" + name + "_3a_cloth_model.png", backgroundImage);
     Mat distance, result;
     sqrt(sumSquares, distance);
     distance.convertTo(result, CV_8U, 3.0); //scale x3 for contrast (values above 255 saturate)
@@ -174,12 +174,12 @@ vector<Ball> FindBalls(const Mat& photo, const string& name)
     fillConvexPoly(tableMask, PHOTO_CORNERS, 4, Scalar(255));
     Mat masked;
     bitwise_and(difference, tableMask, masked);
-    imwrite("Output/" + name + "_3_difference.png", masked);
+    SaveImage("Output/" + name + "_3_difference.png", masked);
 
     //2. Otsu thresholding --> binary "not cloth" image
     Mat foreground;
     threshold(masked, foreground, 0, 255, THRESH_BINARY | THRESH_OTSU);
-    imwrite("Output/" + name + "_4_foreground.png", foreground);
+    SaveImage("Output/" + name + "_4_foreground.png", foreground);
 
     //3. Hough transform for circles on the (smoothed) difference image
     Mat smoothed;
@@ -220,8 +220,8 @@ vector<Ball> FindBalls(const Mat& photo, const string& name)
         circle(detectedImage, centre, cvRound(radius), Scalar(0, 0, 255), 2);
 
     }
-    imwrite("Output/" + name + "_5_candidates.png", candidatesImage);
-    imwrite("Output/" + name + "_6_detected.png", detectedImage);
+    SaveImage("Output/" + name + "_5_candidates.png", candidatesImage);
+    SaveImage("Output/" + name + "_6_detected.png", detectedImage);
     return balls;
 }
 
@@ -451,7 +451,7 @@ void EvaluateTestImages(const vector<Mat>& models, DetectionScore& total, int& c
     }
 }
 
-// Interesection over union of 2 circles of radius r whose centres are d apart 
+// Intersection over union of 2 circles of radius r whose centres are d apart 
 double CircleIoU(double d, double r)
 {
     if (d >= 2 * r) return 0.0;
