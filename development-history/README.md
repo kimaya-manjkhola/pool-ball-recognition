@@ -1,18 +1,29 @@
 # Development history
 This folder documents how the project was developed before the GitHub repository existed (development started on 1 Nov 2026; the repository was created on 5 Nov 2026).
 
-The `reconstructed-history` branch shows how the code developed from 1 to 4 November 2026, before this repository was created on 5 November. Each commit there is labelled [Reconstructed]:
-it was recorded on 9 Nov 2026, from the code as it was on the date below.
+The `reconstructed-history` branch shows how the code developed from 1 to 4 November 2026,
+before this repository was created on 5 November. Its commits were reconstructed on
+9–11 November 2026 from the code as it was on each date below, and each one is labelled
+[Reconstructed]. Each commit is dated to the day that version was written; the time (12:00)
+is a placeholder.
 
-| Commit | Written (author date) | Version |
+| Commit | Written | Version |
 |---|---|---|
-| 193a3cc | 1 Nov 2026 | Project setup: test program loads and displays Table1 |
-| 54a192b | 1 Nov 2026 | Stage 0: perspective transform and ground-truth overlay |
-| 8b1937f | 2 Nov 2026 | Stage 1: ball detection |
-| 7f197b2 | 4 Nov 2026 | Stage 1 evaluation: first version (does not compile yet) |
-| 731c039 | 4 Nov 2026 | Stage 1 evaluation: compile errors fixed |
+| a1ec560 | 1 Nov 2026 | Project setup: test program loads and displays Table1 |
+| 10f7427 | 1 Nov 2026 | Stage 0: perspective transform and ground-truth overlay |
+| e5035fa | 2 Nov 2026 | Stage 1: ball detection |
+| abde671 | 4 Nov 2026 | Stage 1 evaluation: first version (does not compile yet) |
+| c8d4192 | 4 Nov 2026 | Stage 1 evaluation: compile errors fixed |
 
-Development continues on `main` from commit 1f2b20e (Stage 2 recognition, 5 Nov 2026).
+**Limitations**
+- The history is incomplete. It only includes versions that were saved at the time or could be
+  recovered. Other attempts in between, such as other ball-finding methods I tried and smaller
+  fixes, were not saved, so they are not included.
+- Commits 3 and 5 were put together from the previous saved version plus the code added at that
+  stage, so some lines differ from the version before only in spacing.
+
+The branch is merged into `main` (commit 8f1785a); development on `main` continues from
+commit 1f2b20e (Stage 2 recognition, 5 Nov 2026).
 
 ## Snapshots
 These are exact, unchanged copies of myApplication.cpp at two points during development.
@@ -20,7 +31,7 @@ These are exact, unchanged copies of myApplication.cpp at two points during deve
 | File | Saved | State of the code |
 |---|---|---|
 | 2026-11-01_stage0_perspective_transform.cpp | 1 Nov 2026, ~16:12 | Stage 0 working: perspective transform to table coordinates and ground-truth overlay (with Table1 ground-truth corrections) |
-| 2026-11-04_stage1_detection_and_evaluation_before_fixes.cpp | 4 Nov 2026, ~19:06 | Stage 1 ball detection plus the first version of the evaluation code, before I fixed its compile errors |
+| 2026-11-04_stage1_detection_and_evaluation_before_fixes.cpp | 4 Nov 2026| Stage 1 ball detection plus the first version of the evaluation code, before I fixed its compile errors |
 
 The final version (Stage 2 recognition added, 4-5 Nov) is myApplication.cpp,
 committed in 1f2b20e ("Stages 0-2 working...").
