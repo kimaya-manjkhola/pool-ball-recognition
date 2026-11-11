@@ -87,6 +87,10 @@ committed in 1f2b20e ("Stages 0-2 working...").
 - Added a lighting robustnes test: detection and cognition re-run on the test images 
   with brightness scaled by 0.5, 0.75, 1.0, 1.25, and 1.5, models still trained on the original trained on the original AllBalls image. Detection stayed robust (F1 0.94 - 0.96) because the cloth model and the OTsu threshold adapt to each image. Recognition dropped to 53 - 62% at the extremes because the colour models include absolute brightness and come from one training image.
 
+### Wednesday 11 November 2026
+- Saved the cloth model image for each table, to illustrate that stage in the report.
+- Added comparison tests computed by the program: matching tolerance (21.5 mm vs 11.4 mm, i.e. IoU 0.5), colour space (HSV 95.3% vs HLS 85.9%), histogram metric (Bhattacharyya 95.3% vs Chi-square 17.6%), and a precision-recall sweep of the Hough accumulator threshold (10-30), where 15 is closest to P = 1, R = 1.
+
 ## Ground-truth corrections
 The assignment released an updated spreadsheet correcting 4 ball positions (Table1 white ball; ball 2 in Tables 4, 5 and 6).
 
@@ -101,13 +105,5 @@ While checking the ground truth against the images, I found further errors, list
 | Table2 | 4 and 5 | H5-K5 | Positions of the two balls swapped | Numbers on the balls | 4 = (315, 1046), 5 = (310, 1305) |
 | AllBalls | 11-15 | V3-AE3 | Labels in the wrong order | Numbers on the balls | 11 = (335, 1013), 12 = (336, 1067), 13 = (334, 1130), 14 = (345, 1187), 15 = (342, 1245) |
 
-Effect on the results (6 test images):
-| | Spreadsheet as released | Corrected |
-|---|---|---|
-| Stage 1 F1 | 0.910 | 0.955 |
-| Recognition accuracy | 63.0% | 95.3% |
-| Located and recognised | 56.7% | 90.0% |
-
 The large recognition difference comes from the AllBalls labels: with the original
 labels, the system learns the wrong colours for balls 11-15.
-
