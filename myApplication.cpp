@@ -88,6 +88,19 @@ const double BALL_RADIUS_MM = 21.5; //ball diameter is 43 mm (from the brief)
 const int BACKGROUND_KERNEL = 151; //median window, several ball diameters wide
 const Point PHOTO_CORNERS[4] = { Point(337, 35), Point(1570, 21), Point(1888, 451), Point(38, 472) }; // TL, TR, BR, BL
 
+// SETTING changed by the comparison tests
+// The default values are the ones used by the final system.
+int    houghAccumulator     = 15;               // Hough accumulator threshold
+double matchTolerance       = 21.5;             // max distance (mm) for a detection to match a ball
+int    histogramColourSpace = COLOR_BGR2HSV;    // colour space used for the ball histograms
+int    histogramMetric      = HISTCMP_BHATTACHARYYA;   // histogram comparison metric
+bool   saveImages           = true;             // the comparison tests do not save images
+
+void SaveImage(const string& path, const Mat& image)
+{
+    if (saveImages) imwrite(path, image);
+}
+
 struct Ball
 {
     Point2f photo; // centre in the original photo (x = column, y = row)
@@ -172,7 +185,7 @@ vector<Ball> FindBalls(const Mat& photo, const string& name)
     Mat smoothed;
     GaussianBlur(masked, smoothed, Size(5, 5), 1.5);
     vector<Vec3f> circles;
-    HoughCircles(smoothed, circles, HOUGH_GRADIENT, 1, 20, 100, 15, 14, 30);
+    HoughCircles(smoothed, circles, HOUGH_GRADIENT, 1, 20, 100, houghAccumulator, 14, 30);
 
     //4. Verify each circle
     Point2f pockets[6] = { Point2f(0, 0), Point2f(TABLE_COLS / 2.0f, 0), Point2f(TABLE_COLS, 0), Point2f(0, TABLE_ROWS), Point2f(TABLE_COLS / 2.0f, TABLE_ROWS), Point2f(TABLE_COLS, TABLE_ROWS) };
@@ -235,7 +248,7 @@ vector<int> MatchToGroundTruth(const vector<Ball>& balls, int imageIndex, Detect
         for (int d =0; d < (int)balls.size(); d++)
         {
             double distance = norm(balls[d].table - Point2f((float)col, (float)row));
-            if (distance <= BALL_RADIUS_MM) pairs.push_back({ distance, d, b });
+            if (distance <= matchTolerance) pairs.push_back({ distance, d, b });
         }
     }
     sort(pairs.begin(), pairs.end(), [](const Pair& a, const Pair& b) { return a.distance < b.distance; });
@@ -311,7 +324,7 @@ Mat BallHistogram(const Mat& hsv, const Point2f& centre, double radius)
 vector<Mat> TrainBallModels()
 {
     Mat photo = imread("Media/AllBalls.jpeg"), hsv;
-    cvtColor(photo, hsv, COLOR_BGR2HSV);
+    cvtColor(photo, hsv, histogramColourSpace);
     Mat toPhoto = TableTransform().inv();
     vector<Mat> models;
     for (int b = 0; b < NUM_BALLS; b++)
@@ -329,7 +342,7 @@ vector<Mat> TrainBallModels()
 vector<int> RecogniseBalls(const Mat& photo, const vector<Ball>& balls, const vector<Mat>& models)
 {
     Mat hsv;
-    cvtColor(photo, hsv, COLOR_BGR2HSV);
+    cvtColor(photo, hsv, histogramColourSpace);
     Mat toPhoto = TableTransform().inv();
     struct Pair { double distance; int detection, label; };
     vector<Pair> pairs;
@@ -337,7 +350,7 @@ vector<int> RecogniseBalls(const Mat& photo, const vector<Ball>& balls, const ve
     {
         Mat histogram = BallHistogram(hsv, balls[d].photo, ExpectedRadius(balls[d].table, toPhoto));
         for (int b = 0; b < NUM_BALLS; b++)
-            pairs.push_back({ compareHist(histogram, models[b], HISTCMP_BHATTACHARYYA), d, b });
+            pairs.push_back({ compareHist(histogram, models[b], histogramMetric), d, b });
     }
     sort(pairs.begin(), pairs.end(), [](const Pair& a, const Pair& b) { return a.distance < b.distance; });
 
@@ -413,6 +426,82 @@ void RobustnessTest(const vector<Mat>& models)
     }
 }
 
+// COMPARISON TESTS
+// Runs detection and recognition on the 6 test images with the current settings.
+void EvaluateTestImages(const vector<Mat>& models, DetectionScore& total, int& correct, int& located)
+{
+    total = DetectionScore();
+    correct = 0;
+    located = 0;
+    for (int i = 1; i < NUM_IMAGES; i++)
+    {
+        Mat photo = imread("Media/" + IMAGE_NAMES[i] + ".jpeg");
+        vector<Ball> balls = FindBalls(photo, IMAGE_NAMES[i]);
+        DetectionScore score;
+        vector<int> matchOf = MatchToGroundTruth(balls, i, score);
+        vector<int> labelOf = RecogniseBalls(photo, balls, models);
+        total.tp += score.tp; total.fp += score.fp; total.fn += score.fn;
+        total.errorSum += score.errorSum; total.errorMax = max(total.errorMax, score.errorMax);
+        for (int d = 0; d < (int)balls.size(); d++)
+        {
+            if (matchOf[d] < 0) continue;
+            located++;
+            if (labelOf[d] == matchOf[d]) correct++;
+        }
+    }
+}
+
+void RunComparisons()
+{
+    saveImages = false;
+    DetectionScore total;
+    int correct, located;
+    vector<Mat> models = TrainBallModels();
+
+    // 1. Matching tolerance: one ball radius (21.5 mm) vs IoU = 0.5 for two 43 mm circles (11.4 mm)
+    cout << "---- Comparison 1: matching tolerance ----" << endl;
+    double tolerances[2] = { 21.5, 11.4 };
+    for (double tolerance : tolerances)
+    {
+        matchTolerance = tolerance;
+        EvaluateTestImages(models, total, correct, located);
+        PrintDetectionScore(format("%.1fmm", tolerance), total);
+    }
+    matchTolerance = 21.5;
+
+    // 2. Colour space and histogram comparison metric for recognition
+    cout << "---- Comparison 2: colour space and histogram metric ----" << endl;
+    string names[3]  = { "HSV + Bhattacharyya", "HLS + Bhattacharyya", "HSV + Chi-square" };
+    int spaces[3]    = { COLOR_BGR2HSV, COLOR_BGR2HLS, COLOR_BGR2HSV };
+    int metrics[3]   = { HISTCMP_BHATTACHARYYA, HISTCMP_BHATTACHARYYA, HISTCMP_CHISQR };
+    for (int k = 0; k < 3; k++)
+    {
+        histogramColourSpace = spaces[k];
+        histogramMetric = metrics[k];
+        vector<Mat> testModels = TrainBallModels();
+        EvaluateTestImages(testModels, total, correct, located);
+        cout << format("%-20s Recognition accuracy = %d / %d = %.3f", names[k].c_str(), correct, located,
+                       (double)correct / located) << endl;
+    }
+    histogramColourSpace = COLOR_BGR2HSV;
+    histogramMetric = HISTCMP_BHATTACHARYYA;
+
+    // 3. Hough accumulator threshold: precision-recall trade-off; best = closest to P = 1, R = 1
+    cout << "---- Comparison 3: Hough accumulator threshold (precision-recall) ----" << endl;
+    int thresholds[6] = { 10, 12, 15, 20, 25, 30 };
+    for (int threshold : thresholds)
+    {
+        houghAccumulator = threshold;
+        EvaluateTestImages(models, total, correct, located);
+        double precision = (double)total.tp / (total.tp + total.fp);
+        double recall = (double)total.tp / (total.tp + total.fn);
+        PrintDetectionScore(format("acc=%d", threshold), total);
+        cout << format("         Distance to (P=1, R=1) = %.3f", sqrt((1 - precision) * (1 - precision) + (1 - recall) * (1 - recall))) << endl;
+    }
+    houghAccumulator = 15;
+    saveImages = true;
+}
+
 void MyApplication()
 {
     filesystem::create_directories("Output");
@@ -477,5 +566,6 @@ void MyApplication()
                    recognisedCorrectly, ballsOnTables, (double)recognisedCorrectly / ballsOnTables) << endl;
     PrintConfusionMatrix(confusion);
     RobustnessTest(models);
+    RunComparisons();
     cout << "Done - check the Output folder" << endl;
 }
